@@ -41,5 +41,6 @@ setup(
         "tensorflow==2.12.0",
         "tqdm==4.62.3",
         "umap-learn==0.5.2",
+        "upsetplot==0.8.0",
     ]
 )
