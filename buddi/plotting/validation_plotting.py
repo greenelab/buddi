@@ -826,6 +826,102 @@ def plot_PR_ROC_liver(ctrl_test_meta_df, decoded_0_0, decoded_0_1,
     return axs, proj_log2FC_df, res_df
 
 
+def plot_PR_ROC_liver_BP(ctrl_test_meta_df, bp_df, 
+                      de_bulk_genes, curr_cell_type, 
+                      sn_DE_ref, sn_sc_DE_ref, 
+                      axs, union_genes_cap, method_name):
+
+    # this is for the "projected" expression
+    curr_ctrl_idx = np.where(np.logical_and(ctrl_test_meta_df.stim == "CTRL", ctrl_test_meta_df.Y_max == curr_cell_type))[0]
+    curr_stim_idx = np.where(np.logical_and(ctrl_test_meta_df.stim == "STIM", ctrl_test_meta_df.Y_max == curr_cell_type))[0]
+    proj_ctrl = bp_df.iloc[curr_ctrl_idx]
+    proj_stim = bp_df.iloc[curr_stim_idx]
+
+    # take the median for nomalization
+    proj_ctrl = np.median(rankdata(proj_ctrl, axis=1), axis=0)
+    proj_stim = np.median(rankdata(proj_stim, axis=1), axis=0)
+    proj_log2FC = abs(proj_stim-proj_ctrl)
+
+    # make dataframe of true/false positives
+    proj_log2FC_df = pd.DataFrame(proj_log2FC, index=union_genes_cap)
+    proj_log2FC_df["orig"] = proj_stim-proj_ctrl
+
+    # make a random one
+    proj_log2FC_df["random"] = sample(proj_log2FC_df[0].tolist(), len(proj_log2FC_df[0].tolist()))
+
+    # make a zero one
+    proj_log2FC_df["zero"] = [0]*len(proj_log2FC_df[0].tolist())
+
+    # compare with bulk alone
+    proj_log2FC_df["bulk"] = de_bulk_genes.log2FC.loc[union_genes_cap]
+
+    proj_log2FC_df["sn_DE"] = 0
+    proj_log2FC_df.iloc[np.where(np.isin(union_genes_cap, sn_DE_ref))[0], proj_log2FC_df.columns.get_loc("sn_DE")] = 1
+
+    proj_log2FC_df["sc_sn_DE"] = 0
+    proj_log2FC_df.iloc[np.where(np.isin(union_genes_cap, sn_sc_DE_ref))[0], proj_log2FC_df.columns.get_loc("sc_sn_DE")] = 1
+
+
+
+    # now do the single-nucleus cell type specific DE
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df[0], name=method_name, ax=axs[0,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df[0], name=method_name, ax=axs[0,1])
+
+
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df.random, name="random",ax= axs[0,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df.random, name="random", ax=axs[0,1])
+
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df.random, name="zero",ax= axs[0,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df.random, name="zero", ax=axs[0,1])
+
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df.bulk, name="bulk",ax= axs[0,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sn_DE, proj_log2FC_df.bulk, name="bulk", ax=axs[0,1])
+
+
+    # now do the single-nucleus cell type specific DE
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df[0], name=method_name, ax=axs[1,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df[0], name=method_name, ax=axs[1,1])
+
+
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.random, name="random",ax= axs[1,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.random, name="random", ax=axs[1,1])
+
+
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.random, name="zero",ax= axs[1,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.random, name="zero", ax=axs[1,1])
+
+    roc_display = RocCurveDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.bulk, name="bulk",ax= axs[1,0])
+    pr_display = PrecisionRecallDisplay.from_predictions(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.bulk, name="bulk", ax=axs[1,1])
+ 
+    axs[0,0].legend(loc="best")
+    axs[0,1].legend(loc="best")
+    axs[1,0].legend(loc="best")
+    axs[1,1].legend(loc="best")
+
+    axs[0,0].set_title(curr_cell_type)
+    axs[0,1].set_title(curr_cell_type)
+
+    sn_avg_pr_BuDDI = average_precision_score(proj_log2FC_df.sn_DE, proj_log2FC_df[0])
+    sn_avg_pr_random = average_precision_score(proj_log2FC_df.sn_DE, proj_log2FC_df.random)
+    sn_avg_pr_zero = average_precision_score(proj_log2FC_df.sn_DE, proj_log2FC_df.zero)
+    sn_avg_pr_bulk = average_precision_score(proj_log2FC_df.sn_DE, proj_log2FC_df.bulk)
+
+    sc_sn_avg_pr_BuDDI = average_precision_score(proj_log2FC_df.sc_sn_DE, proj_log2FC_df[0])
+    sc_sn_avg_pr_random = average_precision_score(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.random)
+    sc_sn_avg_pr_zero = average_precision_score(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.zero)
+    sc_sn_avg_pr_bulk = average_precision_score(proj_log2FC_df.sc_sn_DE, proj_log2FC_df.bulk)
+
+    res_df = pd.DataFrame([sn_avg_pr_BuDDI, sn_avg_pr_random, sn_avg_pr_zero, sn_avg_pr_bulk,
+                                  sc_sn_avg_pr_BuDDI, sc_sn_avg_pr_random, sc_sn_avg_pr_zero, sc_sn_avg_pr_bulk])
+    res_df.columns = ["scores"]
+    res_df["metric"] = ["avg_pr"]*8
+    res_df["cell_type"] = [curr_cell_type]*8
+    res_df["ref_set"] = ["sn"]*4+["sc_sn"]*4
+    res_df["method"] = [method_name, "random", "zero", "bulk"]*2
+
+    return axs, proj_log2FC_df, res_df
+
+
 def plot_PR_ROC_kang(ctrl_test_meta_df, decoded_0_0, decoded_0_1, curr_cell_type, sc_DE_ref, axs, union_genes_cap):
 
     # this is for the "projected" expression
