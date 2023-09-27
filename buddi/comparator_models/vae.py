@@ -1,10 +1,9 @@
 # import the VAE code
 import sys
-sys.path.insert(1, '../../')
-sys.path.insert(1, '../')
-from buddi.preprocessing import sc_preprocess
-from buddi.plotting import validation_plotting as vp
-from comparator_models.models import vae4
+
+from ..preprocessing import sc_preprocess
+from ..plotting import validation_plotting as vp
+from models import vae4
 
 # general imports
 import warnings
