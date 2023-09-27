@@ -23,6 +23,7 @@ setup(
     packages=[
         'buddi',
     ],
+    package_dir={'buddi': 'buddi'},
     install_requires=[
         "anndata==0.8.0",
         "ipywidgets==7.6.5",
