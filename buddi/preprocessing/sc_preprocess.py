@@ -20,12 +20,11 @@ import pickle
 import gzip
 from pathlib import Path
 
+import time
 
 # cell type specific pseudobulk
-def get_cell_type_sum(in_adata, cell_type_id, num_samples):
+def get_cell_type_sum(in_adata, cell_df, num_samples): # pseudo
 
-  # get the expression of the cells of interest
-  cell_df = in_adata[in_adata.obs["scpred_CellType"].isin([cell_type_id])]
 
   # if there is none of the cell type, 
   # just get the first elements and we will return zero
@@ -41,7 +40,6 @@ def get_cell_type_sum(in_adata, cell_type_id, num_samples):
   #dense_X = cell_sample.X.todense()
   #noise_mask = np.random.poisson(dense_X+1)
   #dense_X = dense_X + noise_mask
-
   sum_per_gene = cell_sample.X.sum(axis=0)
 
   # set to zero
@@ -52,7 +50,7 @@ def get_cell_type_sum(in_adata, cell_type_id, num_samples):
   return sum_per_gene
 
 # method to generate a proportion vector
-def gen_prop_vec_lognormal(len_vector, num_cells):
+def gen_prop_vec_lognormal(len_vector, num_cells): # pseudo
 
   rand_vec = np.random.lognormal(5, np.random.uniform(1,3), len_vector) # 1
 
@@ -66,7 +64,7 @@ def gen_prop_vec_lognormal(len_vector, num_cells):
   return rand_vec
 
 # method to generate true proportion vector
-def true_prop_vec(in_adata, num_cells):
+def true_prop_vec(in_adata, num_cells): # pseudo
 
   rand_vec = in_adata.obs["scpred_CellType"].value_counts() / in_adata.obs["scpred_CellType"].shape[0]
   rand_vec = np.array(rand_vec)
@@ -81,7 +79,14 @@ def true_prop_vec(in_adata, num_cells):
   return rand_vec
 
 # total pseudobulk
-def make_prop_and_sum(in_adata, num_samples, num_cells, use_true_prop, cell_noise, useSampleNoise=True):
+def make_prop_and_sum(in_adata, num_samples, num_cells, use_true_prop, cell_noise, useSampleNoise=True): # pseudo
+
+
+  total_prop_list = []
+  total_expr_list = []
+  test_prop_list = []
+  test_expr_list = []
+
   len_vector = in_adata.obs["scpred_CellType"].unique().shape[0]
 
   # instantiate the expression and proportion vectors
@@ -91,6 +96,10 @@ def make_prop_and_sum(in_adata, num_samples, num_cells, use_true_prop, cell_nois
   test_expr = pd.DataFrame(columns = in_adata.var['gene_ids'])
   test_prop = pd.DataFrame(columns = in_adata.obs["scpred_CellType"].unique())
 
+  # make the cell dict for fast access
+  cell_df = {}
+  for curr_cell_type in in_adata.obs["scpred_CellType"].unique():
+    cell_df[curr_cell_type] = in_adata[in_adata.obs["scpred_CellType"].isin([curr_cell_type])]
 
   # cell specific noise, new noise for each sample
   if cell_noise == None:
@@ -115,18 +124,19 @@ def make_prop_and_sum(in_adata, num_samples, num_cells, use_true_prop, cell_nois
 
     sum_over_cells = np.zeros(in_adata.var['gene_ids'].shape[0])
 
+
     #iterate over all the cell types
+    all_cell_types = props.columns
     for cell_idx in range(len_vector):
-      cell_type_id = in_adata.obs["scpred_CellType"].unique()[cell_idx]
+      cell_type_id = all_cell_types[cell_idx]
       num_cell = props_vec[cell_idx]
-      ct_sum = get_cell_type_sum(in_adata, cell_type_id, num_cell)
+      ct_sum = get_cell_type_sum(in_adata, cell_df[cell_type_id], num_cell)
 
       # add noise if we don't want the true proportions
       #if not use_true_prop:
       ct_sum = np.multiply(ct_sum, cell_noise[cell_idx])
 
       sum_over_cells = sum_over_cells + ct_sum
-
 
     #sum_over_cells = pd.DataFrame(sum_over_cells)
     #sum_over_cells.columns = in_adata.var['gene_ids']
@@ -145,22 +155,30 @@ def make_prop_and_sum(in_adata, num_samples, num_cells, use_true_prop, cell_nois
       sum_over_cells = sum_over_cells.T
 
 
-
     sum_over_cells = pd.DataFrame(sum_over_cells)
     sum_over_cells = sum_over_cells.T
     sum_over_cells.columns = in_adata.var['gene_ids']
 
     if samp_idx < num_samples:
-      total_prop = pd.concat([total_prop, props])
-      total_expr = pd.concat([total_expr, sum_over_cells])
+      total_prop_list.append(props)
+      total_expr_list.append(sum_over_cells)
+      #total_prop = pd.concat([total_prop, props])
+      #total_expr = pd.concat([total_expr, sum_over_cells])
     else:
-      test_prop = pd.concat([test_prop, props])
-      test_expr = pd.concat([test_expr, sum_over_cells])
+      test_prop_list.append(props)
+      test_expr_list.append(sum_over_cells)
+      #test_prop = pd.concat([test_prop, props])
+      #test_expr = pd.concat([test_expr, sum_over_cells])
+
+  total_prop = pd.concat(total_prop_list, axis=0)
+  total_expr = pd.concat(total_expr_list, axis=0)
+  test_prop = pd.concat(test_prop_list, axis=0)
+  test_expr = pd.concat(test_expr_list, axis=0)
 
 
   return (total_prop, total_expr, test_prop, test_expr)
 
-def get_only1_celltype_prop_matrix(num_samp, cell_order):
+def get_only1_celltype_prop_matrix(num_samp, cell_order):  # analysis
   num_celltypes = len(cell_order)  
 
   total_prop = pd.DataFrame(columns = cell_order)
@@ -175,7 +193,7 @@ def get_only1_celltype_prop_matrix(num_samp, cell_order):
 
   return total_prop
 
-def get_single_celltype_prop_matrix(num_samp, cell_order):
+def get_single_celltype_prop_matrix(num_samp, cell_order): # buddi
   num_celltypes = len(cell_order)  
 
   total_prop = pd.DataFrame(columns = cell_order)
@@ -191,7 +209,7 @@ def get_single_celltype_prop_matrix(num_samp, cell_order):
   return total_prop
 
 
-def get_random_prop_matrix(num_samp, cell_order, num_cells_samp=5000):
+def get_random_prop_matrix(num_samp, cell_order, num_cells_samp=5000): # pseudo
 
   # now generate all the proportions
   total_prop = pd.DataFrame(columns = cell_order)
@@ -216,7 +234,7 @@ def get_random_prop_matrix(num_samp, cell_order, num_cells_samp=5000):
   return total_prop
 
 
-def get_corr_prop_matrix(num_samp, real_prop, cell_order, min_corr=0.8):
+def get_corr_prop_matrix(num_samp, real_prop, cell_order, min_corr=0.8): # pseudo
 
   # now generate all the proportions
   total_prop = pd.DataFrame(columns = cell_order)
@@ -236,7 +254,7 @@ def get_corr_prop_matrix(num_samp, real_prop, cell_order, min_corr=0.8):
   return total_prop
 
 
-def calc_prop(in_adata, cell_order):
+def calc_prop(in_adata, cell_order): # pseudo
 
   tab = in_adata.obs.groupby(['scpred_CellType']).size()
   tab = tab[cell_order]
@@ -250,15 +268,24 @@ def calc_prop(in_adata, cell_order):
   return props
 
 # total pseudobulk
-def use_prop_make_sum(in_adata, num_cells, props_vec, cell_noise, sample_noise=None, useSampleNoise=True):
+def use_prop_make_sum(in_adata, num_cells, props_vec, cell_noise, sample_noise=None, useSampleNoise=True): # pseudo
 
   len_vector = props_vec.shape[1]
-  cell_order = props_vec.columns.values.to_list()
+  cell_order = props_vec.columns.values.tolist()
+
+
+  total_prop_list = []
+  total_expr_list = []
 
   # instantiate the expression and proportion vectors
-  total_expr = pd.DataFrame(columns = in_adata.var['gene_ids'])
-  total_prop = pd.DataFrame(columns = cell_order)
+  #total_expr = pd.DataFrame(columns = in_adata.var['gene_ids'])
+  #total_prop = pd.DataFrame(columns = cell_order)
 
+
+  # make the cell dict for fast access
+  cell_df = {}
+  for curr_cell_type in in_adata.obs["scpred_CellType"].unique():
+    cell_df[curr_cell_type] = in_adata[in_adata.obs["scpred_CellType"].isin([curr_cell_type])]
 
   # cell specific noise, new noise for each sample
   if cell_noise == None:
@@ -280,20 +307,19 @@ def use_prop_make_sum(in_adata, num_cells, props_vec, cell_noise, sample_noise=N
 
     sum_over_cells = np.zeros(in_adata.var['gene_ids'].shape[0])
 
-
     #iterate over all the cell types
     for cell_idx in range(len_vector):
       cell_type_id = cell_order[cell_idx]
       num_cell = props_vec.iloc[samp_idx, cell_idx]*n_cells
       num_cell = num_cell.astype(int)
-      ct_sum = get_cell_type_sum(in_adata, cell_type_id, num_cell)
+      ct_sum = get_cell_type_sum(in_adata, cell_df[cell_type_id], num_cell)
 
       # add noise if we don't want the true proportions
       #if not use_true_prop:
       ct_sum = np.multiply(ct_sum, cell_noise[cell_idx])
 
       sum_over_cells = sum_over_cells + ct_sum
-
+      
 
     #sum_over_cells = pd.DataFrame(sum_over_cells)
     #sum_over_cells.columns = in_adata.var['gene_ids']
@@ -314,19 +340,24 @@ def use_prop_make_sum(in_adata, num_cells, props_vec, cell_noise, sample_noise=N
     else:
       sum_over_cells = sum_over_cells.T
 
-
     sum_over_cells = pd.DataFrame(sum_over_cells)
     sum_over_cells = sum_over_cells.T
     sum_over_cells.columns = in_adata.var['gene_ids']
 
-    total_expr = pd.concat([total_expr, sum_over_cells])
-    total_prop = pd.concat([total_prop, props])
+    #total_expr = pd.concat([total_expr, sum_over_cells])
+    #total_prop = pd.concat([total_prop, props])
+
+    total_expr_list.append(sum_over_cells)
+    total_prop_list.append(props)
 
 
+
+  total_prop = pd.concat(total_prop_list, axis=0)
+  total_expr = pd.concat(total_expr_list, axis=0)
 
   return (total_prop, total_expr, sample_noise)
 
-def read_single_kang_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name):
+def read_single_kang_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name): # analysis
 
   pseudobulk_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_pseudo_splits.pkl")
   prop_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_prop_splits.pkl")
@@ -363,7 +394,7 @@ def read_single_kang_pseudobulk_file(data_path, sample_id, stim_status, isTraini
   return (pseudobulks_df, prop_df, gene_df, sig_df, metadata_df)
 
 
-def read_single_kang_pseudobulk_file_toy_example(data_path, sample_id, stim_status, isTraining, file_name):
+def read_single_kang_pseudobulk_file_toy_example(data_path, sample_id, stim_status, isTraining, file_name): # analysis
 
   pseudobulk_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_pseudo_splits.pkl")
   prop_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_prop_splits.pkl")
@@ -395,41 +426,33 @@ def read_single_kang_pseudobulk_file_toy_example(data_path, sample_id, stim_stat
   return (pseudobulks_df, prop_df, gene_df, sig_df, metadata_df)
 
 
-def read_single_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name, num_rand_pseudo, num_ct_pseudo):
+def read_single_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name): # buddi
 
   pseudobulk_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_pseudo_splits.pkl")
   prop_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_prop_splits.pkl")
+  meta_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_meta_splits.pkl")
 
   gene_file = os.path.join(data_path, f"{file_name}_genes.pkl")
   sig_file = os.path.join(data_path, f"{file_name}_sig.pkl")
 
   pseudobulk_path = Path(pseudobulk_file)
   prop_path = Path(prop_file)
+  meta_path = Path(meta_file)
   gene_path = Path(gene_file)
   sig_path = Path(sig_file)
 
   prop_df = pickle.load( open( prop_path, "rb" ) )
   pseudobulks_df = pickle.load( open( pseudobulk_path, "rb" ) )
+  metadata_df = pickle.load( open( meta_path, "rb" ) )
   gene_df = pickle.load( open( gene_path, "rb" ) )
   sig_df = pickle.load( open( sig_path, "rb" ) )
 
-  num_samps = pseudobulks_df.shape[0] 
-  samp_type = ["bulk"]*num_samps
-  cell_prop_type = ["random"]*num_rand_pseudo+["cell_type_specific"]*num_ct_pseudo 
-  samp_type = ["sc_ref"]*(num_rand_pseudo+num_ct_pseudo)
-  
-  
-  metadata_df = pd.DataFrame(data = {"sample_id":[sample_id]*num_samps, 
-                                    "stim":[stim_status]*num_samps,
-                                    "isTraining":[isTraining]*num_samps,
-                                    "cell_prop_type":cell_prop_type,
-                                    "samp_type":samp_type,})
 
   return (pseudobulks_df, prop_df, gene_df, sig_df, metadata_df)
 
 
 
-def read_single_liver_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name):
+def read_single_liver_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name): # analysis
 
   pseudobulk_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_pseudo_splits.pkl")
   prop_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_prop_splits.pkl")
@@ -468,110 +491,7 @@ def read_single_liver_pseudobulk_file(data_path, sample_id, stim_status, isTrain
 
 
 
-def read_single_covid_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name):
-
-  pseudobulk_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_pseudo_splits.pkl")
-  prop_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_prop_splits.pkl")
-
-  gene_file = os.path.join(data_path, f"{file_name}_genes.pkl")
-  sig_file = os.path.join(data_path, f"{file_name}_sig.pkl")
-
-  pseudobulk_path = Path(pseudobulk_file)
-  prop_path = Path(prop_file)
-  gene_path = Path(gene_file)
-  sig_path = Path(sig_file)
-
-  prop_df = pickle.load( open( prop_path, "rb" ) )
-  pseudobulks_df = pickle.load( open( pseudobulk_path, "rb" ) )
-  gene_df = pickle.load( open( gene_path, "rb" ) )
-  sig_df = pickle.load( open( sig_path, "rb" ) )
-
-  num_samps = pseudobulks_df.shape[0] 
-  samp_type = ["bulk"]*num_samps
-  #if sample_id == "samp1":
-  # 1500 because 15 cell types
-  cell_prop_type = ["random"]*1000+["cell_type_specific"]*1300 
-  samp_type = ["sc_ref"]*2300
-  #elif isTraining == "Train":
-  #  cell_prop_type = ["realistic"]*num_samps
-  #else:
-  #  cell_prop_type = ["realistic"]*100+["cell_type_specific"]*900
-
-  metadata_df = pd.DataFrame(data = {"sample_id":[sample_id]*num_samps, 
-                                    "stim":[stim_status]*num_samps,
-                                    "isTraining":[isTraining]*num_samps,
-                                    "cell_prop_type":cell_prop_type,
-                                    "samp_type":samp_type,})
-
-  return (pseudobulks_df, prop_df, gene_df, sig_df, metadata_df)
-
-
-def read_all_covid_pseudobulk_files(data_path, file_name):
-
-  sample_order = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6']
-  stim_order = ['CTRL']
-  train_order = ['Train']
-
-  X_concat = None
-  Y_concat = None
-  meta_concat = None
-
-
-  for curr_samp in sample_order:
-        
-      pseudobulks_df, prop_df, gene_df, sig_df, metadata_df = read_single_covid_pseudobulk_file(data_path, curr_samp, "CTRL", 'Train', file_name)
-
-      if X_concat is None:
-        X_concat, Y_concat, meta_concat = pseudobulks_df, prop_df, metadata_df
-      else:
-        X_concat = pd.concat([X_concat, pseudobulks_df])
-        Y_concat = pd.concat([Y_concat, prop_df])
-        meta_concat = pd.concat([meta_concat, metadata_df])
-
-
-  return (X_concat, Y_concat, gene_df, meta_concat)
-
-
-
-def read_single_kidney_pseudobulk_file(data_path, sample_id, stim_status, isTraining, file_name):
-
-  pseudobulk_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_pseudo_splits.pkl")
-  prop_file = os.path.join(data_path, f"{file_name}_{sample_id}_{stim_status}_{isTraining}_prop_splits.pkl")
-
-  gene_file = os.path.join(data_path, f"{file_name}_genes.pkl")
-  sig_file = os.path.join(data_path, f"{file_name}_sig.pkl")
-
-  pseudobulk_path = Path(pseudobulk_file)
-  prop_path = Path(prop_file)
-  gene_path = Path(gene_file)
-  sig_path = Path(sig_file)
-
-  prop_df = pickle.load( open( prop_path, "rb" ) )
-  pseudobulks_df = pickle.load( open( pseudobulk_path, "rb" ) )
-  gene_df = pickle.load( open( gene_path, "rb" ) )
-  sig_df = pickle.load( open( sig_path, "rb" ) )
-
-  num_samps = pseudobulks_df.shape[0] 
-  samp_type = ["bulk"]*num_samps
-  #if sample_id == "samp1":
-  # 1500 because 15 cell types
-  cell_prop_type = ["random"]*1000+["cell_type_specific"]*1500 
-  samp_type = ["sc_ref"]*2500
-  #elif isTraining == "Train":
-  #  cell_prop_type = ["realistic"]*num_samps
-  #else:
-  #  cell_prop_type = ["realistic"]*100+["cell_type_specific"]*900
-
-  metadata_df = pd.DataFrame(data = {"sample_id":[sample_id]*num_samps, 
-                                    "stim":[stim_status]*num_samps,
-                                    "isTraining":[isTraining]*num_samps,
-                                    "cell_prop_type":cell_prop_type,
-                                    "samp_type":samp_type,})
-
-  return (pseudobulks_df, prop_df, gene_df, sig_df, metadata_df)
-
-
-def read_all_kang_pseudobulk_files_toy_example(data_path, file_name):
+def read_all_kang_pseudobulk_files_toy_example(data_path, file_name): # analysis
 
   sample_order = ['1015', '1256']
   stim_order = ['STIM', 'CTRL']
@@ -601,7 +521,7 @@ def read_all_kang_pseudobulk_files_toy_example(data_path, file_name):
   return (X_concat, Y_concat, gene_df, meta_concat)
 
 
-def read_all_kang_pseudobulk_files(data_path, file_name, num_bulks_training=10, seed=10):
+def read_all_kang_pseudobulk_files(data_path, file_name, num_bulks_training=10, seed=10): # analysis
 
   sample_order = ['1015', '1256', '1488', '1244', '1016', '101', '1039', '107']
   stim_order = ['STIM', 'CTRL']
@@ -649,7 +569,7 @@ def read_all_kang_pseudobulk_files(data_path, file_name, num_bulks_training=10, 
   return (X_concat, Y_concat, gene_df, meta_concat)
 
 
-def read_all_kidney_pseudobulk_files(data_path, file_name, num_bulks_training=10):
+def read_all_kidney_pseudobulk_files(data_path, file_name, num_bulks_training=10): # analysis
 
   sample_order = ['samp1', 'samp2', 'samp3']
   stim_order = ['STIM', 'CTRL']
@@ -695,55 +615,8 @@ def read_all_kidney_pseudobulk_files(data_path, file_name, num_bulks_training=10
   return (X_concat, Y_concat, gene_df, meta_concat)
 
 
-def read_diva_files(data_path, file_idx, file_name, use_test=False):
 
-    pseudo_str = "pseudo"
-    prop_str = "prop"
-    if use_test:
-      pseudo_str = "testpseudo"
-      prop_str = "testprop"
-     
-
-    if file_idx is not None:
-      pbmc_rep1_pseudobulk_file = os.path.join(data_path, f"{file_name}_{pseudo_str}_{file_idx}.pkl")
-      pbmc_rep1_prop_file = os.path.join(data_path, f"{file_name}_{prop_str}_{file_idx}.pkl")
-    else:
-      pbmc_rep1_pseudobulk_file = os.path.join(data_path, f"{file_name}_pseudo.pkl")
-      pbmc_rep1_prop_file = os.path.join(data_path, f"{file_name}_prop.pkl")
-
-    pbmc_rep1_gene_file = os.path.join(data_path, f"{file_name}_genes.pkl")
-    pbmc_rep1_sig_file = os.path.join(data_path, f"{file_name}_sig.pkl")
-
-    pseudobulk_path = Path(pbmc_rep1_pseudobulk_file)
-    prop_path = Path(pbmc_rep1_prop_file)
-    gene_path = Path(pbmc_rep1_gene_file)
-    sig_path = Path(pbmc_rep1_sig_file)
-
-    prop_df = pickle.load( open( prop_path, "rb" ) )
-    pseudobulks_df = pickle.load( open( pseudobulk_path, "rb" ) )
-    gene_df = pickle.load( open( gene_path, "rb" ) )
-    sig_df = pickle.load( open( sig_path, "rb" ) )
-
-    return (pseudobulks_df, prop_df, gene_df, sig_df)
-
-def read_all_diva_files(data_path, idx_range, file_name, use_test=False):
-
-    X_concat = None
-
-    for idx in idx_range:
-        X_train, Y_train, gene_df, _ = read_diva_files(data_path, idx, file_name, use_test)
-        X_train.columns = gene_df
-
-        if X_concat is None:
-            X_concat, Y_concat = X_train, Y_train
-        else:
-            X_concat = pd.concat([X_concat, X_train])
-            Y_concat = pd.concat([Y_concat, Y_train])
-
-    return (X_concat, Y_concat, gene_df)
-
-
-def write_cs_bp_files(cybersort_path, out_file_id, pbmc1_a_df, X_train, patient_idx=0):
+def write_cs_bp_files(cybersort_path, out_file_id, pbmc1_a_df, X_train, patient_idx=0): # pseudo
     # write out the scRNA-seq signature matrix
     sig_out_file = os.path.join(cybersort_path, f"{out_file_id}_{patient_idx}_cybersort_sig.tsv.gz")
     sig_out_path = Path(sig_out_file)

@@ -28,7 +28,7 @@ setup(
         "ipywidgets==7.6.5",
         "matplotlib_inline==0.1.6",
         "matplotlib_venn==0.11.6",
-        "matplotlib==3.7.1",
+        "matplotlib<3.7.0",
         "numpy-groupies==0.9.14",
         "numpy==1.23.5",
         "pandas==1.5.3",
