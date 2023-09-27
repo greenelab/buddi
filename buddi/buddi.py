@@ -9,9 +9,9 @@ dimensions (other than the slack latent space) BuDDI would like to have, 3 or 4.
 
 import sys
 
-from models import buddi4, buddi3
-from preprocessing import sc_preprocess
-from plotting import validation_plotting as vp
+from .models import buddi4, buddi3
+from .preprocessing import sc_preprocess
+from .plotting import validation_plotting as vp
 
 # general imports
 import warnings
