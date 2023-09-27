@@ -37,7 +37,7 @@ setup(
         "scipy==1.8.1",
         "seaborn==0.11.2",
         "tensorflow-estimator==2.12.0",
-        "tensorflow-io-gcs-filesystem==0.32.0",
+        "tensorflow-io-gcs-filesystem>=0.32.0,<1.0",
         "tensorflow==2.12.0",
         "tqdm==4.62.3",
         "umap-learn==0.5.2",
