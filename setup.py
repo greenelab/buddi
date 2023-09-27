@@ -36,7 +36,7 @@ setup(
         "scanpy==1.8.2",
         "scipy==1.8.1",
         "seaborn==0.11.2",
-        "tensorflow-estimator==2.12.0",
+        "tensorflow-estimator==2.13.0",
         "tensorflow-io-gcs-filesystem>=0.32.0,<1.0",
         "tensorflow==2.13.0",
         "tqdm==4.62.3",
