@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+# from distutils.core import setup
+from setuptools import setup, find_packages
 
 import re
 
@@ -20,10 +21,7 @@ setup(
     author='Natalie R. Davidson',
     author_email='natalie.davidson@cuanschutz.edu',
     python_requires='>=3.7, <4',
-    packages=[
-        'buddi',
-    ],
-    package_dir={'buddi': 'buddi'},
+    packages=find_packages(),
     install_requires=[
         "anndata==0.8.0",
         "ipywidgets==7.6.5",
