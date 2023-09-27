@@ -54,7 +54,7 @@ def gen_prop_vec_lognormal(len_vector, num_cells): # pseudo
 
   rand_vec = np.random.lognormal(5, np.random.uniform(1,3), len_vector) # 1
 
-  rand_vec = np.round((rand_vec/np.sum(rand_vec))*num_cells)
+  rand_vec = np.ceil((rand_vec/np.sum(rand_vec))*num_cells)
   if(np.sum(rand_vec) != num_cells):
     idx_change = np.argmax(rand_vec)
     rand_vec[idx_change] = rand_vec[idx_change] + (num_cells - np.sum(rand_vec))
@@ -69,7 +69,7 @@ def true_prop_vec(in_adata, num_cells): # pseudo
   rand_vec = in_adata.obs["scpred_CellType"].value_counts() / in_adata.obs["scpred_CellType"].shape[0]
   rand_vec = np.array(rand_vec)
 
-  rand_vec = np.round(rand_vec*num_cells)
+  rand_vec = np.ceil(rand_vec*num_cells)
   if(np.sum(rand_vec) != num_cells):
     idx_change = np.argmax(rand_vec)
     rand_vec[idx_change] = rand_vec[idx_change] + (num_cells - np.sum(rand_vec))
@@ -219,7 +219,7 @@ def get_random_prop_matrix(num_samp, cell_order, num_cells_samp=5000): # pseudo
 
     rand_vec = np.random.lognormal(5, np.random.uniform(1,3), len(cell_order)) # 1
 
-    rand_vec = np.round((rand_vec/np.sum(rand_vec))*num_cells_samp)
+    rand_vec = np.ceil((rand_vec/np.sum(rand_vec))*num_cells_samp)
     if(np.sum(rand_vec) != num_cells_samp):
         idx_change = np.argmax(rand_vec)
         rand_vec[idx_change] = rand_vec[idx_change] + (num_cells_samp - np.sum(rand_vec))
