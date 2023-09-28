@@ -311,7 +311,7 @@ def use_prop_make_sum(in_adata, num_cells, props_vec, cell_noise, sample_noise=N
     for cell_idx in range(len_vector):
       cell_type_id = cell_order[cell_idx]
       num_cell = props_vec.iloc[samp_idx, cell_idx]*n_cells
-      num_cell = num_cell.astype(int)
+      num_cell = np.ceil(num_cell).astype(int)
       ct_sum = get_cell_type_sum(in_adata, cell_df[cell_type_id], num_cell)
 
       # add noise if we don't want the true proportions
