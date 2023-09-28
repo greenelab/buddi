@@ -53,7 +53,7 @@ def get_cell_type_sum(in_adata, cell_df, num_samples): # pseudo
 def gen_prop_vec_lognormal(len_vector, num_cells): # pseudo
 
   rand_vec = np.random.lognormal(5, np.random.uniform(1,3), len_vector) # 1
-
+  rand_vec = rand_vec + 1
   rand_vec = np.ceil((rand_vec/np.sum(rand_vec))*num_cells)
   if(np.sum(rand_vec) != num_cells):
     idx_change = np.argmax(rand_vec)
