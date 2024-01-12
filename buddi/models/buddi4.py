@@ -66,11 +66,15 @@ def fit_model(known_prop_vae, unknown_prop_vae, encoder_unlab, encoder_lab, deco
     meta_hist = []
 
     # make test train split
-    unkp_idx_train = np.random.choice(range(X_unknown_prop.shape[0]), np.ceil(X_unknown_prop.shape[0]*0.8).astype(int), replace=False)
-    kp_idx_train = np.random.choice(range(X_known_prop.shape[0]), np.ceil(X_known_prop.shape[0]*0.8).astype(int), replace=False)
+    unkp_idx_train = np.random.choice(range(X_unknown_prop.shape[0]), np.ceil(X_unknown_prop.shape[0]).astype(int), replace=False)
+    kp_idx_train = np.random.choice(range(X_known_prop.shape[0]), np.ceil(X_known_prop.shape[0]).astype(int), replace=False)
 
-    unkp_idx_test = np.setdiff1d(range(X_unknown_prop.shape[0]), unkp_idx_train)
-    kp_idx_test = np.setdiff1d(range(X_known_prop.shape[0]), kp_idx_train)
+    #unkp_idx_test = np.setdiff1d(range(X_unknown_prop.shape[0]), unkp_idx_train)
+    #kp_idx_test = np.setdiff1d(range(X_known_prop.shape[0]), kp_idx_train)
+
+    unkp_idx_test = unkp_idx_train
+    kp_idx_test = kp_idx_train
+
 
     # now we need to make the known and unknown samples the same size
     # and a size compatible with the batch size
