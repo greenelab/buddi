@@ -34,7 +34,9 @@ def get_cell_type_sum(in_adata, cell_df, num_samples): # pseudo
     mult_by_zero = True
 
   # now to the sampling
-  cell_sample = sk.utils.resample(cell_df, n_samples = num_samples, replace=True)
+  cell_sample = sk.utils.resample(range(cell_df.shape[0]), n_samples = num_samples, replace=True)
+  cell_sample = cell_df[cell_sample]
+
 
   # add  poisson noise
   #dense_X = cell_sample.X.todense()
@@ -618,9 +620,18 @@ def read_all_kidney_pseudobulk_files(data_path, file_name, num_bulks_training=10
 
 def write_cs_bp_files(cybersort_path, out_file_id, pbmc1_a_df, X_train, patient_idx=0): # pseudo
     # write out the scRNA-seq signature matrix
-    sig_out_file = os.path.join(cybersort_path, f"{out_file_id}_{patient_idx}_cybersort_sig.tsv.gz")
+    sig_out_file = os.path.join(cybersort_path, f"{out_file_id}_{patient_idx}_cibersort_sig.tsv.gz")
     sig_out_path = Path(sig_out_file)
-    pbmc1_a_df = pbmc1_a_df.transpose()
+
+    sig_df_vals = pbmc1_a_df.iloc[:,1:]
+    sig_df_celltype = pbmc1_a_df.scpred_CellType
+
+    # now we transpose
+    sig_sparse = sp.sparse.csr_matrix(sig_df_vals.values)
+    sig_sparse_t = sig_sparse.transpose()
+    sig_sparse = pd.DataFrame.sparse.from_spmatrix(sig_sparse_t)
+    sig_sparse.columns = sig_df_celltype
+    sig_sparse.index = pbmc1_a_df.columns[1:]
 
     # cast from matrix to pd
     pbmc1_a_df = pd.DataFrame(pbmc1_a_df)
@@ -628,7 +639,7 @@ def write_cs_bp_files(cybersort_path, out_file_id, pbmc1_a_df, X_train, patient_
     pbmc1_a_df.to_csv(sig_out_path, sep='\t',header=False)
 
     # write out the bulk RNA-seq mixture matrix
-    sig_out_file = os.path.join(cybersort_path, f"{out_file_id}_{patient_idx}_cybersort_mix.tsv.gz")
+    sig_out_file = os.path.join(cybersort_path, f"{out_file_id}_{patient_idx}_cibersort_mix.tsv.gz")
     sig_out_path = Path(sig_out_file)
 
     X_train.to_csv(sig_out_path, sep='\t',header=True)
