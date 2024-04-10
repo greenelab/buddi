@@ -32,6 +32,15 @@ brew install hdf5 c-blosc cython
 export HDF5_DIR=/opt/homebrew/opt/hdf5 
 export BLOSC_DIR=/opt/homebrew/opt/c-blosc
 ```
+
+Below is an example for Ubuntu using apt-get.
+
+```bash
+apt-get install libhdf5-serial-dev
+apt-get install libblosc-dev
+apt-get install pip install typing-extensions --upgrade
+```
+
 Second, you will install BuDDI from github using pip. It is recommended that you install this into a virtual env that you can activate before running the provided analysis scripts or your own BuDDI experiments.
 
 ```bash
