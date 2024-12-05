@@ -654,7 +654,7 @@ def plot_tsne(plot_df, color_vec, ax, title="", alpha=0.1, legend_title="Y"):
         hue=legend_title,
         palette=sns.color_palette("hls", len(np.unique(color_vec))),
         legend="full",
-        alpha=0.3, ax= ax
+        alpha=alpha, ax= ax
     )
 
     ax.set_title(title)
